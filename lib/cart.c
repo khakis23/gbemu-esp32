@@ -168,3 +168,11 @@ bool cart_load(char *cart) {
 
     return true;
 }
+
+u8 cart_read(u16 address) {
+    return ctx.rom_data[address];
+}
+
+void cart_write(u16 address, u8 value) {
+    printf("Pseudo writing to cart ROM: %04X = %02X\n", address, value);
+}

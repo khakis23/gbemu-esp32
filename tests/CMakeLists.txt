@@ -10,6 +10,9 @@ link_directories(${CHECK_LIBRARY_DIRS})
 
 set(TEST_SOURCES
   check_gbe.c
+#        ../include/instructions.h
+#        ../include/cpu_util.h
+#        ../include/proc.h
 )
 
 add_executable(check_gbe ${TEST_SOURCES})
