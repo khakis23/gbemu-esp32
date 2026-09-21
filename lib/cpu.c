@@ -43,7 +43,7 @@ bool cpu_step() {
     #endif
 
     // 3. fetch data
-    fetch_data();
+    fetch_data();  // up to +2 EMU cycles
     // 4. execute
     execute();
 
@@ -68,18 +68,131 @@ static void fetch_data() {
             cpu_ctx.fetched_data = cpu_read_reg(cpu_ctx.cur_instr->reg_1);
             return;
 
+        case AM_R_R:
+            cpu_ctx.fetched_data = cpu_read_reg(cpu_ctx.cur_instr->reg_2);
+            return;
+
         case AM_R_D8:  // Read 8-bit immediate
             cpu_ctx.fetched_data = bus_read(cpu_ctx.regs.pc++);
             emu_cycle(1);
             return;
 
+        case AM_A8_R:
+            cpu_ctx.mem_dest = bus_read(cpu_ctx.regs.pc++) | 0xFF00;
+            cpu_ctx.mem_write = true;
+            emu_cycle(1);
+            return;
+
         case AM_D16: {  // Read 16-bit immediate
-            const u16 lo = bus_read(cpu_ctx.regs.pc++);
-            const u16 hi = bus_read(cpu_ctx.regs.pc++);
+            cpu_ctx.fetched_data = bus_read16(cpu_ctx.regs.pc);
             emu_cycle(2);
-            cpu_ctx.fetched_data = (hi << 8) | lo;
+            cpu_ctx.regs.pc += 2;
             return;
         }
+
+        case AM_MR_R: {
+            cpu_ctx.fetched_data = cpu_read_reg(cpu_ctx.cur_instr->reg_2);
+            cpu_ctx.mem_dest = cpu_read_reg(cpu_ctx.cur_instr->reg_1);
+            // special case: extend 8-bit C register to 16-bit
+            if (cpu_ctx.cur_instr->reg_1 == RT_C) {
+                cpu_ctx.mem_dest |= 0xFF00;
+            }
+            cpu_ctx.mem_write = true;
+            return;
+        }
+
+        case AM_R_D16: {
+            cpu_ctx.fetched_data = bus_read16(cpu_ctx.regs.pc);
+            emu_cycle(2);
+            cpu_ctx.regs.pc += 2;
+            return;
+        }
+
+        case AM_D8:
+            cpu_ctx.fetched_data = bus_read(cpu_ctx.regs.pc++);
+            emu_cycle(1);
+            return;
+
+        case AM_R_MR: {
+            u16 addr = cpu_read_reg(cpu_ctx.cur_instr->reg_2);
+            // special case: extend 8-bit C register to 16-bit
+            if (cpu_ctx.cur_instr->reg_2 == RT_C) {
+                addr |= 0xFF00;
+            }
+            cpu_ctx.fetched_data = bus_read(addr);
+            emu_cycle(1);
+            return;
+        }
+
+        case AM_R_HLI:
+            cpu_ctx.fetched_data = bus_read(cpu_read_reg(cpu_ctx.cur_instr->reg_2));
+            emu_cycle(1);
+            cpu_set_reg(RT_HL, cpu_read_reg(RT_HL) + 1);
+            return;
+
+        case AM_R_HLD:
+            cpu_ctx.fetched_data = bus_read(cpu_read_reg(cpu_ctx.cur_instr->reg_2));
+            emu_cycle(1);
+            cpu_set_reg(RT_HL, cpu_read_reg(RT_HL) - 1);
+            return;
+
+        case AM_HLI_R:
+            cpu_ctx.fetched_data = cpu_read_reg(cpu_ctx.cur_instr->reg_2);
+            cpu_ctx.mem_dest = cpu_read_reg(cpu_ctx.cur_instr->reg_1);
+            cpu_ctx.mem_write = true;
+            cpu_set_reg(RT_HL, cpu_read_reg(RT_HL) + 1);
+            return;
+
+        case AM_HLD_R:
+            cpu_ctx.fetched_data = cpu_read_reg(cpu_ctx.cur_instr->reg_2);
+            cpu_ctx.mem_dest = cpu_read_reg(cpu_ctx.cur_instr->reg_1);
+            cpu_ctx.mem_write = true;
+            cpu_set_reg(RT_HL, cpu_read_reg(RT_HL) - 1);
+            return;
+
+        case AM_R_A8:
+            cpu_ctx.fetched_data = bus_read(cpu_ctx.regs.pc++);
+            emu_cycle(1);
+            return;
+
+        case AM_HL_SPR:
+            cpu_ctx.fetched_data = bus_read(cpu_ctx.regs.pc++);
+            emu_cycle(1);
+            return;
+
+        case AM_D16_R:
+        case AM_A16_R: {
+            cpu_ctx.mem_dest = bus_read16(cpu_ctx.regs.pc);
+            cpu_ctx.mem_write = true;
+            emu_cycle(2);
+            cpu_ctx.regs.pc += 2;
+            cpu_ctx.fetched_data = cpu_read_reg(cpu_ctx.cur_instr->reg_2);
+            return;
+        }
+
+        case AM_MR_D8:
+            cpu_ctx.fetched_data = bus_read(cpu_ctx.regs.pc++);
+            emu_cycle(1);
+            cpu_ctx.mem_dest = cpu_read_reg(cpu_ctx.cur_instr->reg_1);
+            cpu_ctx.mem_write = true;
+            return;
+
+        case AM_MR:
+            cpu_ctx.mem_dest = cpu_read_reg(cpu_ctx.cur_instr->reg_1);
+            cpu_ctx.mem_write = true;
+            cpu_ctx.fetched_data = bus_read(cpu_read_reg(cpu_ctx.cur_instr->reg_1));
+            emu_cycle(1);
+            return;
+
+        case AM_R_A16: {
+            const u16 addr = bus_read16(cpu_ctx.regs.pc);
+            emu_cycle(2);
+            cpu_ctx.regs.pc += 2;
+            cpu_ctx.fetched_data = bus_read(addr);
+            emu_cycle(1);
+            return;
+        }
+
         default: {
             fprintf(stderr, "Unknown addressing mode: %d\n", cpu_ctx.cur_instr->mode);
             exit(-7);

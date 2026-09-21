@@ -3,6 +3,8 @@
 #include <bus.h>
 #include <common.h>
 
+#include "cpu_util.h"
+
 
 /* Flag Management Helper */
 void cpu_set_flags(cpu_context *ctx, char z, char n, char h, char c) {
@@ -55,7 +57,58 @@ static void proc_jp(cpu_context *ctx) {
     }
 }
 
-static void proc_ld(cpu_context *ctx) {}
+/* Handles all standard LDs */
+static void proc_ld(cpu_context *ctx) {
+    // 1. Reg to mem
+    if (ctx->mem_write) {
+        // Write addr is 16-bit
+        if (ctx->cur_instr->reg_2 >= RT_AF) {
+            bus_write16(ctx->mem_dest, ctx->fetched_data);
+            emu_cycle(2);
+        }
+        // 8-bit
+        else {
+            bus_write(ctx->mem_dest, ctx->fetched_data);
+            emu_cycle(1);
+        }
+    }
+
+    // 2. Special Case: perform operation on the stack item
+    else if (ctx->cur_instr->mode == AM_HL_SPR) {
+        const u16 sp = cpu_read_reg(RT_SP);
+        const u8 offset_raw = ctx->fetched_data & 0xFF;
+
+        // Calculate carry flags
+        bool h_carry = (sp & 0x0F) + (offset_raw & 0x0F) >= 0x10;
+        bool carry = (sp & 0xFF) + (offset_raw & 0xFF) >= 0x100;
+        cpu_set_flags(ctx, 0, 0, h_carry, carry);
+
+        // Computer signed SP offset and save to HL reg
+        //                      |—> (remember that SP can go up and down)
+        const u16 res = sp + (int8_t)offset_raw;  // signed!
+        cpu_set_reg(RT_HL, res);  // always save to HL
+    }
+
+    // 3. Reg to reg
+    else {
+        cpu_set_reg(ctx->cur_instr->reg_1, ctx->fetched_data);
+    }
+}
+
+/* LDs for High Memory (only supports reg A) */
+static void proc_ldh(cpu_context *ctx) {
+    // GB High memory assumes top bits (FF)
+    // Read into reg A
+    if (ctx->cur_instr->reg_1 == RT_A) {
+        cpu_set_reg(RT_A, bus_read(0xFF00 | ctx->fetched_data));
+    }
+    // Write
+    else {
+        bus_write(ctx->mem_dest, ctx->regs.a);
+    }
+    emu_cycle(1);
+}
+
 static void proc_inc(cpu_context *ctx) {}
 static void proc_dec(cpu_context *ctx) {}
 static void proc_add(cpu_context *ctx) {}
@@ -84,7 +137,6 @@ static void proc_ret(cpu_context *ctx) {}
 static void proc_reti(cpu_context *ctx) {}
 static void proc_rst(cpu_context *ctx) {}
 static void proc_ei(cpu_context *ctx) {}
-static void proc_ldh(cpu_context *ctx) {}
 static void proc_jphl(cpu_context *ctx) {}
 
 /* Processor Dispatch Table */

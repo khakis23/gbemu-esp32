@@ -39,4 +39,3 @@ IN_PROC instr_get_processor(instr_type type);
 
 void cpu_init();
 bool cpu_step();
-

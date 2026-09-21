@@ -17,24 +17,36 @@
 +-------------------------------------------------------------------------+
  */
 
-
-u8 bus_read(u16 address) {
+/* Requires 1 clock cycle */
+u8 bus_read(const u16 address) {
     // Cartridge ROM
     if (address < 0x8000) {
         return cart_read(address);
     }
 
-    // TODO
-    NO_IMPL
+    printf("Unsupported read from address: %04X\n", address);
+    return 0;
 }
 
-void bus_write(u16 address, u8 value) {
+/* Requires 1 clock cycle */
+void bus_write(const u16 address, const u8 value) {
     // Cartridge ROM
     if (address < 0x8000) {
         return cart_write(address, value);
     }
 
-    // TODO
-    NO_IMPL
+    printf("Unsupported write to address: %04X\n", address);
 }
 
+/* Requires **2** clock cycles */
+u16 bus_read16(const u16 address) {
+    const u8 lo = bus_read(address);
+    const u8 hi = bus_read(address + 1);
+    return (hi << 8) | lo;
+}
+
+/* Requires **2** clock cycles */
+void bus_write16(const u16 address, const u16 value) {
+    bus_write(address, value & 0xFF);
+    bus_write(address + 1, value >> 8);
+}
