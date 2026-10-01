@@ -1,1 +1,19 @@
+# Build directories & artifacts
 build/
+cmake-build-*/
+*.o
+*.a
+*.dylib
+gbemu
+check_gbe
+
+# JetBrains / CLion
+.idea/
+*.iml
+
+# macOS
+.DS_Store
+
+# ROMs & Saves
+ROMS/
+*.sav
