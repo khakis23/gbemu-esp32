@@ -17,7 +17,7 @@ set(TEST_SOURCES
 
 add_executable(check_gbe ${TEST_SOURCES})
 target_link_libraries(check_gbe emu ${CHECK_LIBRARIES})
-target_include_directories(check_gbe PRIVATE ${PROJECT_SOURCE_DIR}/include )
+target_include_directories(check_gbe PRIVATE "${CMAKE_SOURCE_DIR}/gbemu/include")
 
 
 find_program(DEBIAN "dpkg")

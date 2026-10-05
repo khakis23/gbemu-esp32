@@ -1,83 +1,26 @@
+if(ESP_PLATFORM)
+  file(GLOB_RECURSE SOURCES "lib/*.c")
+  idf_component_register(
+    SRCS ${SOURCES}
+    INCLUDE_DIRS "include"
+  )
+else()
+  file(GLOB SOURCES CONFIGURE_DEPENDS "lib/*.c")
+  file(GLOB HEADERS CONFIGURE_DEPENDS "include/*.h")
 
-set(MAIN_SOURCES
-  main.c
-)
+  add_library(emu STATIC ${SOURCES} ${HEADERS})
 
-file (GLOB headers "${PROJECT_SOURCE_DIR}/include/*.h")
+  target_include_directories(emu PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+  )
 
-add_executable(gbemu ${HEADERS} ${MAIN_SOURCES})
-target_link_libraries(gbemu emu)
-target_include_directories(gbemu PUBLIC ${PROJECT_SOURCE_DIR}/include )
-
-message(STATUS "SDL Libraries: ${SDL2_LIBRARIES} - ${SDL2_LIBRARY}")
-message(STATUS "SDL TTF Libraries: ${SDL2_TTF_LIBRARIES} - ${SDL2_TTF_LIBRARY}")
-
-
-install(TARGETS gbemu
-RUNTIME DESTINATION bin
-LIBRARY DESTINATION lib
-ARCHIVE DESTINATION lib)
-
-add_custom_command(
-  TARGET ${PROJECT_NAME} POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy
-  ${PROJECT_SOURCE_DIR}/NotoSansMono-Medium.ttf
-  $<TARGET_FILE_DIR:${PROJECT_NAME}>
-  VERBATIM)
-
-if (WIN32)
-
-if (${CMAKE_SIZEOF_VOID_P} MATCHES 8)
-  add_custom_command(
-    TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/lib/x64/SDL2.dll
-    $<TARGET_FILE_DIR:${PROJECT_NAME}>
-    VERBATIM)
-  add_custom_command(
-    TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/lib/x64/SDL2_ttf.dll
-    $<TARGET_FILE_DIR:${PROJECT_NAME}>
-    VERBATIM)
-  add_custom_command(
-    TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/lib/x64/zlib1.dll
-    $<TARGET_FILE_DIR:${PROJECT_NAME}>
-    VERBATIM)
-  add_custom_command(
-    TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/lib/x64/libfreetype-6.dll
-    $<TARGET_FILE_DIR:${PROJECT_NAME}>
-    VERBATIM)
-else ()
-  add_custom_command(
-    TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/lib/x86/SDL2.dll
-    $<TARGET_FILE_DIR:${PROJECT_NAME}>
-    VERBATIM)
-  add_custom_command(
-    TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/lib/x86/SDL2_ttf.dll
-    $<TARGET_FILE_DIR:${PROJECT_NAME}>
-    VERBATIM)
-  add_custom_command(
-    TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/lib/x86/zlib1.dll
-    $<TARGET_FILE_DIR:${PROJECT_NAME}>
-    VERBATIM)
-  add_custom_command(
-    TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-    ${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/lib/x86/libfreetype-6.dll
-    $<TARGET_FILE_DIR:${PROJECT_NAME}>
-    VERBATIM)
-endif ()
-
+  if(NOT BUILD_FOR_ESP32)
+    if(WIN32)
+      target_include_directories(emu PUBLIC "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/include")
+      target_include_directories(emu PUBLIC "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/include")
+    else()
+      target_include_directories(emu PUBLIC ${SDL2_INCLUDE_DIR})
+      target_link_libraries(emu PUBLIC ${SDL2_LIBRARY} ${SDL2_TTF_LIBRARY})
+    endif()
+  endif()
 endif()
-

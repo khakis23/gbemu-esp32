@@ -4,8 +4,21 @@ project(gbemu C)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 ###############################################################################
-# Set build features
-set(CMAKE_BUILD_TYPE Debug)
+# Set build features & platform target
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Debug)
+endif()
+
+option(BUILD_FOR_ESP32 "Build for ESP32 target using ESP-IDF" OFF)
+if(BUILD_FOR_ESP32 OR DEFINED ENV{IDF_TARGET} OR DEFINED ESP_PLATFORM)
+  set(BUILD_FOR_ESP32 ON)
+  add_compile_definitions(PLATFORM_ESP32=1)
+else()
+  add_compile_definitions(PLATFORM_MACOS=1)
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_definitions(DEBUG=1)
+  endif()
+endif()
 
 ###############################################################################
 include(CheckCSourceCompiles)
@@ -45,34 +58,36 @@ if(NOT HAVE_PID_T)
   endif(WIN32)
 endif(NOT HAVE_PID_T)
 
-if(WIN32)
-  set(SDL2_DIR "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2")
-  set(SDL2_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/include;${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/include/SDL2")
+if(NOT BUILD_FOR_ESP32)
+  if(WIN32)
+    set(SDL2_DIR "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2")
+    set(SDL2_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/include;${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/include/SDL2")
 
-  # Support both 32 and 64 bit builds
-  if (${CMAKE_SIZEOF_VOID_P} MATCHES 8)
-    set(SDL2_LIBRARIES "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/lib/x64/SDL2.lib;${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/lib/x64/SDL2main.lib")
-  else ()
-    set(SDL2_LIBRARIES "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/lib/x86/SDL2.lib;${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/lib/x86/SDL2main.lib")
-  endif ()
+    # Support both 32 and 64 bit builds
+    if (${CMAKE_SIZEOF_VOID_P} MATCHES 8)
+      set(SDL2_LIBRARIES "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/lib/x64/SDL2.lib;${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/lib/x64/SDL2main.lib")
+    else ()
+      set(SDL2_LIBRARIES "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/lib/x86/SDL2.lib;${PROJECT_SOURCE_DIR}/../windows_deps/sdl2/lib/x86/SDL2main.lib")
+    endif ()
 
-  string(STRIP "${SDL2_LIBRARIES}" SDL2_LIBRARIES)
+    string(STRIP "${SDL2_LIBRARIES}" SDL2_LIBRARIES)
 
-  set(SDL2_TTF_DIR "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf")
-  set(SDL2_TTF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/include")
+    set(SDL2_TTF_DIR "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf")
+    set(SDL2_TTF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/include")
 
-  # Support both 32 and 64 bit builds
-  if (${CMAKE_SIZEOF_VOID_P} MATCHES 8)
-    set(SDL2_TTF_LIBRARIES "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/lib/x64/SDL2_ttf.lib")
-  else ()
-    set(SDL2_TTF_LIBRARIES "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/lib/x86/SDL2_ttf.lib")
-  endif ()
+    # Support both 32 and 64 bit builds
+    if (${CMAKE_SIZEOF_VOID_P} MATCHES 8)
+      set(SDL2_TTF_LIBRARIES "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/lib/x64/SDL2_ttf.lib")
+    else ()
+      set(SDL2_TTF_LIBRARIES "${PROJECT_SOURCE_DIR}/../windows_deps/sdl2_ttf/lib/x86/SDL2_ttf.lib")
+    endif ()
 
-  string(STRIP "${SDL2_TTF_LIBRARIES}" SDL2_TTF_LIBRARIES)
-else()
-  list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/sdl2)
-  find_package(SDL2 REQUIRED)
-  find_package(SDL2_ttf REQUIRED)
+    string(STRIP "${SDL2_TTF_LIBRARIES}" SDL2_TTF_LIBRARIES)
+  else()
+    list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/sdl2)
+    find_package(SDL2 REQUIRED)
+    find_package(SDL2_ttf REQUIRED)
+  endif()
 endif()
 
 ###############################################################################
@@ -86,12 +101,16 @@ set(CONFIG_HEADER ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 ###############################################################################
 # Subdirectories
-add_subdirectory(lib)
 add_subdirectory(gbemu)
-add_subdirectory(tests)
+add_subdirectory(main)
+if(NOT BUILD_FOR_ESP32)
+  add_subdirectory(tests)
+endif()
 
 ###############################################################################
 # Unit tests
-enable_testing()
-add_test(NAME check_gbe COMMAND check_gbe)
+if(NOT BUILD_FOR_ESP32)
+  enable_testing()
+  add_test(NAME check_gbe COMMAND check_gbe)
+endif()
 
