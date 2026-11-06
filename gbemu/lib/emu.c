@@ -5,8 +5,13 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
-/* 
-  Emu components:
+/*
+  The EMU serves 2 roles:
+    1. The application runner: init, core EMU loop.
+    2. The "motherboard" or core time keeper.
+
+
+  EMU components:
 
   |Cart|
   |CPU|
@@ -26,23 +31,29 @@ void delay(u32 ms) {
     SDL_Delay(ms);
 }
 
-int emu_run(int argc, char **argv) {
-    if (argc < 2) {
-        printf("Usage: emu <rom_file>\n");
-        return -1;
+bool emu_init_embedded(size_t rom_start, size_t rom_size) {
+    // TODO Init Display Driver Here...
+
+    return cart_load_buffer((u8 *)rom_start, rom_size);
+}
+
+bool emu_init_desktop(int argc, char **argv) {
+    if (argc > 2) {
+        printf("Usage: ./gbemu <path-to-rom>");
+        return false;
     }
 
-    if (!cart_load(argv[1])) {
-        printf("Failed to load ROM file: %s\n", argv[1]);
-        return -2;
-    }
-
-    printf("Cart loaded..\n");
-
+    // Init SDL
     SDL_Init(SDL_INIT_VIDEO);
     printf("SDL INIT\n");
     TTF_Init();
     printf("TTF INIT\n");
+
+    return cart_load_disk(argv[1]);
+}
+
+int emu_run(void) {
+    printf("Cart loaded...\n");
 
     cpu_init();
     
@@ -61,9 +72,8 @@ int emu_run(int argc, char **argv) {
             return -3;
         }
 
-        // emu_ctx.ticks++;  USING emu_cycle() instead.
+        // emu_ctx.ticks++; REMINDER: using emu_cycle() instead.
     }
-
     return 0;
 }
 

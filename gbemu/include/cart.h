@@ -1,6 +1,7 @@
 #pragma once
 
 #include <common.h>
+#include <stdio.h>
 
 typedef struct {
     u8 entry[4];
@@ -19,7 +20,9 @@ typedef struct {
     u16 global_checksum;
 } rom_header;
 
-bool cart_load(char *cart);
+bool cart_parse_header(void);
+bool cart_load_disk(char *cart);
+bool cart_load_buffer(const u8 *buffer, size_t size);
 
 u8 cart_read(u16 address);
 void cart_write(u16 address, u8 value);

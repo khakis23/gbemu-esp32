@@ -1,8 +1,18 @@
 if(ESP_PLATFORM)
+  ### CHANGE ROM NAME HERE FOR ESP (for embedding) ###
+  set(SELECTED_ROM "tetris.gb")
+
+  configure_file(
+    "${COMPONENT_DIR}/../roms/${SELECTED_ROM}"
+    "${CMAKE_CURRENT_BINARY_DIR}/rom.gb"
+    COPYONLY
+  )
+
   idf_component_register(
     SRCS "main.c"
     INCLUDE_DIRS "."
-    REQUIRES emu
+    REQUIRES gbemu
+    EMBED_FILES "${CMAKE_CURRENT_BINARY_DIR}/rom.gb"
   )
 else()
   add_executable(gbemu main.c)
