@@ -17,3 +17,5 @@ check_gbe
 # ROMs & Saves
 ROMS/
 *.sav
+
+sdkconfig
